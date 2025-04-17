@@ -81,7 +81,7 @@ const VideoPreview: React.FC = () => {
   };
 
   const handleBack = () => {
-    setCurrentStep('media');
+    setCurrentStep('script');
   };
 
   const handleNewProject = () => {

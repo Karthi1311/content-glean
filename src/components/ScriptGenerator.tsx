@@ -10,6 +10,7 @@ import { generateScript } from '@/utils/api';
 import { useApp } from '@/context/AppContext';
 import { useVideoAssembly } from '@/hooks/useVideoAssembly';
 import { ArrowLeft, ArrowRight, RefreshCw, Loader, FileText } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const ScriptGenerator: React.FC = () => {
   const { currentProject, updateProject, setCurrentStep, isLoading, setIsLoading, setError } = useApp();
@@ -19,6 +20,8 @@ const ScriptGenerator: React.FC = () => {
   const [useVoiceover, setUseVoiceover] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showVideoOptions, setShowVideoOptions] = useState(false);
+  const [isSelectingMedia, setIsSelectingMedia] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (currentProject.script) {
@@ -91,22 +94,41 @@ const ScriptGenerator: React.FC = () => {
 
   const handleContinue = async () => {
     if (scriptContent.trim()) {
-      // Save script and settings
-      updateProject({
-        script: {
-          id: currentProject.script?.id || `script-${Date.now()}`,
-          content: scriptContent,
-          topic: currentProject.topic?.title || '',
-          timestamp: new Date().toISOString(),
-        },
-        useVoiceover,
-      });
-      
-      // Auto-select media based on script content
-      await autoSelectMedia();
-      
-      // Continue to next step
-      setCurrentStep('media');
+      try {
+        // Save script and settings
+        updateProject({
+          script: {
+            id: currentProject.script?.id || `script-${Date.now()}`,
+            content: scriptContent,
+            topic: currentProject.topic?.title || '',
+            timestamp: new Date().toISOString(),
+          },
+          useVoiceover,
+        });
+        
+        // Show media selection in progress
+        setIsSelectingMedia(true);
+        
+        // Auto-select media based on script content
+        const mediaResult = await autoSelectMedia();
+        
+        if (mediaResult) {
+          toast({
+            title: "Media automatically selected",
+            description: `Selected ${mediaResult.media.length} videos, ${mediaResult.soundEffects.length} sound effects, and 1 music track.`,
+          });
+          
+          // Skip to assembly step
+          setCurrentStep('assembly');
+        } else {
+          setError('Failed to auto-select media. Please try again.');
+          setIsSelectingMedia(false);
+        }
+      } catch (error) {
+        console.error('Error continuing to media selection:', error);
+        setError('An error occurred. Please try again.');
+        setIsSelectingMedia(false);
+      }
     }
   };
 
@@ -236,11 +258,20 @@ const ScriptGenerator: React.FC = () => {
         </Button>
         <Button
           onClick={handleContinue}
-          disabled={!scriptContent.trim() || isGenerating}
+          disabled={!scriptContent.trim() || isGenerating || isSelectingMedia}
           className="flex items-center space-x-2"
         >
-          <span>Continue to Auto-Select Media</span>
-          <ArrowRight className="w-4 h-4" />
+          {isSelectingMedia ? (
+            <>
+              <Loader className="h-4 w-4 animate-spin mr-2" />
+              <span>Auto-Selecting Media...</span>
+            </>
+          ) : (
+            <>
+              <span>Continue to Video Assembly</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
         </Button>
       </div>
     </div>

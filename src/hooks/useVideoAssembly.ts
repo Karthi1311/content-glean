@@ -12,10 +12,15 @@ export function useVideoAssembly() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [videoResolution, setVideoResolution] = useState<'short' | 'regular'>('regular');
 
-  // New function to auto-select media based on script
+  // Enhanced function to auto-select media based on script
   const autoSelectMedia = async () => {
     if (!currentProject.topic || !currentProject.script) {
-      return;
+      toast({
+        title: "Missing information",
+        description: "Topic and script are required to select media.",
+        variant: "destructive",
+      });
+      return null;
     }
 
     try {
@@ -27,6 +32,12 @@ export function useVideoAssembly() {
       
       // Generate search terms from script and topic
       const searchTerms = extractKeywords(scriptContent, topicTitle);
+      
+      // Show toast for better user feedback
+      toast({
+        title: "Automatically selecting media",
+        description: "Finding the best media for your video...",
+      });
       
       // Fetch stock media based on search terms
       const stockMedia = await searchStockMedia(searchTerms.join(' '));
@@ -43,16 +54,17 @@ export function useVideoAssembly() {
       const selectedSoundEffects = soundEffects.slice(0, 3); // Pick top 3 sound effects
       const selectedMusic = musicTracks.length > 0 ? musicTracks[0] : null; // Pick top music track
       
+      console.log("Auto-selected media:", {
+        videos: selectedMedia.length,
+        soundEffects: selectedSoundEffects.length,
+        music: selectedMusic ? 1 : 0
+      });
+      
       // Update project with selected media
       updateProject({
         selectedMedia,
         selectedSoundEffects,
         selectedMusic,
-      });
-      
-      toast({
-        title: "Media automatically selected",
-        description: `Selected ${selectedMedia.length} videos, ${selectedSoundEffects.length} sound effects, and 1 music track.`,
       });
       
       return {
@@ -169,10 +181,12 @@ export function useVideoAssembly() {
         videoResolution: videoResolution
       };
       
-      // Call assembly API (mocked)
+      console.log("Assembling video with data:", projectData);
+      
+      // Call assembly API
       const videoUrl = await assembleVideo(projectData);
       
-      // Upload to Google Drive (mocked)
+      // Upload to Google Drive
       setProgress(95);
       const { fileId, downloadUrl } = await uploadToGoogleDrive(
         videoUrl, 
@@ -181,6 +195,8 @@ export function useVideoAssembly() {
       
       clearInterval(progressInterval);
       setProgress(100);
+      
+      console.log("Video assembly completed:", { videoUrl, fileId, downloadUrl });
       
       // Update project with results
       updateProject({
