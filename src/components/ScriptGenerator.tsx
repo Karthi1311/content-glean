@@ -5,20 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { generateScript } from '@/utils/api';
 import { useApp } from '@/context/AppContext';
+import { useVideoAssembly } from '@/hooks/useVideoAssembly';
 import { ArrowLeft, ArrowRight, RefreshCw, Loader, FileText } from 'lucide-react';
 
 const ScriptGenerator: React.FC = () => {
   const { currentProject, updateProject, setCurrentStep, isLoading, setIsLoading, setError } = useApp();
+  const { autoSelectMedia, videoResolution, setVideoResolution } = useVideoAssembly();
   const [scriptContent, setScriptContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [useVoiceover, setUseVoiceover] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showVideoOptions, setShowVideoOptions] = useState(false);
 
   useEffect(() => {
     if (currentProject.script) {
       setScriptContent(currentProject.script.content);
+      setShowVideoOptions(true);
     } else {
       handleGenerateScript();
     }
@@ -42,6 +47,7 @@ const ScriptGenerator: React.FC = () => {
       setScriptContent(script.content);
       updateProject({ script });
       setIsEditing(false);
+      setShowVideoOptions(true);
     } catch (error) {
       console.error('Failed to generate script:', error);
       setError('Failed to generate script. Please try again.');
@@ -66,6 +72,7 @@ const ScriptGenerator: React.FC = () => {
         },
       });
       setIsEditing(false);
+      setShowVideoOptions(true);
     }
   };
 
@@ -74,12 +81,17 @@ const ScriptGenerator: React.FC = () => {
     updateProject({ useVoiceover: checked });
   };
 
+  const handleVideoResolutionChange = (value: string) => {
+    setVideoResolution(value as 'short' | 'regular');
+  };
+
   const handleBack = () => {
     setCurrentStep('topic');
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (scriptContent.trim()) {
+      // Save script and settings
       updateProject({
         script: {
           id: currentProject.script?.id || `script-${Date.now()}`,
@@ -89,6 +101,11 @@ const ScriptGenerator: React.FC = () => {
         },
         useVoiceover,
       });
+      
+      // Auto-select media based on script content
+      await autoSelectMedia();
+      
+      // Continue to next step
       setCurrentStep('media');
     }
   };
@@ -170,14 +187,43 @@ const ScriptGenerator: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="voiceover"
-          checked={useVoiceover}
-          onCheckedChange={handleVoiceoverChange}
-        />
-        <Label htmlFor="voiceover">Generate AI voiceover from script</Label>
-      </div>
+      {showVideoOptions && (
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="font-medium mb-4">Video Settings</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-2 block">Video Type</Label>
+                <RadioGroup 
+                  defaultValue={videoResolution} 
+                  value={videoResolution}
+                  onValueChange={handleVideoResolutionChange}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="short" id="short" />
+                    <Label htmlFor="short">Short Video (Vertical, 9:16)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="regular" id="regular" />
+                    <Label htmlFor="regular">Regular Video (Horizontal, 16:9)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="voiceover"
+                  checked={useVoiceover}
+                  onCheckedChange={handleVoiceoverChange}
+                />
+                <Label htmlFor="voiceover">Generate AI voiceover from script</Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex justify-between mt-6">
         <Button
@@ -193,7 +239,7 @@ const ScriptGenerator: React.FC = () => {
           disabled={!scriptContent.trim() || isGenerating}
           className="flex items-center space-x-2"
         >
-          <span>Continue</span>
+          <span>Continue to Auto-Select Media</span>
           <ArrowRight className="w-4 h-4" />
         </Button>
       </div>

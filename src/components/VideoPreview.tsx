@@ -1,15 +1,57 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useApp } from '@/context/AppContext';
 import { useVideoAssembly } from '@/hooks/useVideoAssembly';
 import { ArrowLeft, Download, RefreshCw, Share2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const VideoPreview: React.FC = () => {
   const { currentProject, updateProject, setCurrentStep, resetProject } = useApp();
-  const { startAssembly, progress, isProcessing } = useVideoAssembly();
+  const { startAssembly, progress, isProcessing, videoResolution } = useVideoAssembly();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { toast } = useToast();
+
+  // When component mounts or video URL changes, try to load the video
+  useEffect(() => {
+    if (videoRef.current && currentProject.finalVideoUrl) {
+      const videoElement = videoRef.current;
+      
+      // Reset video element
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      
+      // Set up event listeners
+      const handleError = () => {
+        console.error('Video failed to load:', currentProject.finalVideoUrl);
+        toast({
+          title: "Video playback issue",
+          description: "There was a problem playing this video. Please try regenerating.",
+          variant: "destructive",
+        });
+      };
+      
+      const handleCanPlay = () => {
+        console.log('Video can play:', currentProject.finalVideoUrl);
+      };
+      
+      // Add event listeners
+      videoElement.addEventListener('error', handleError);
+      videoElement.addEventListener('canplay', handleCanPlay);
+      
+      // Set video source
+      videoElement.src = currentProject.finalVideoUrl;
+      videoElement.load();
+      
+      // Clean up
+      return () => {
+        videoElement.removeEventListener('error', handleError);
+        videoElement.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [currentProject.finalVideoUrl, toast]);
 
   const handleAssembleVideo = async () => {
     await startAssembly();
@@ -17,7 +59,24 @@ const VideoPreview: React.FC = () => {
 
   const handleDownload = () => {
     if (currentProject.driveDownloadUrl) {
-      window.open(currentProject.driveDownloadUrl, '_blank');
+      // Create an invisible link and trigger download
+      const a = document.createElement('a');
+      a.href = currentProject.driveDownloadUrl;
+      a.download = `TrendFinder-${currentProject.topic?.title || 'video'}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download started",
+        description: "Your video is being downloaded.",
+      });
+    } else {
+      toast({
+        title: "Download failed",
+        description: "Video URL is not available. Please try regenerating the video.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -50,13 +109,15 @@ const VideoPreview: React.FC = () => {
     if (currentProject.status === 'completed' && currentProject.finalVideoUrl) {
       return (
         <div className="space-y-6">
-          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+          <div className={`aspect-${videoResolution === 'short' ? '9/16' : 'video'} bg-black rounded-lg overflow-hidden mx-auto ${videoResolution === 'short' ? 'max-w-[400px]' : 'w-full'}`}>
             <video 
+              ref={videoRef}
               src={currentProject.finalVideoUrl} 
               controls
               poster={currentProject.selectedMedia[0]?.thumbnailUrl}
               className="w-full h-full"
               playsInline
+              preload="auto"
             >
               Your browser does not support the video tag.
             </video>
@@ -68,7 +129,7 @@ const VideoPreview: React.FC = () => {
               className="flex items-center space-x-2"
             >
               <Download className="w-4 h-4" />
-              <span>Download from Google Drive</span>
+              <span>Download Video</span>
             </Button>
             
             <Button
@@ -101,6 +162,7 @@ const VideoPreview: React.FC = () => {
               
               <div className="space-y-2">
                 <p><span className="font-medium">Topic:</span> {currentProject.topic?.title || 'No topic selected'}</p>
+                <p><span className="font-medium">Video Type:</span> {videoResolution === 'short' ? 'Short (9:16)' : 'Regular (16:9)'}</p>
                 <p><span className="font-medium">Selected Video Clips:</span> {currentProject.selectedMedia.length}</p>
                 <p><span className="font-medium">Sound Effects:</span> {currentProject.selectedSoundEffects.length}</p>
                 <p><span className="font-medium">Music Track:</span> {currentProject.selectedMusic?.title || 'None'}</p>
@@ -114,7 +176,7 @@ const VideoPreview: React.FC = () => {
           onClick={handleAssembleVideo}
           className="w-full"
         >
-          Assemble Video
+          Generate Video
         </Button>
       </div>
     );

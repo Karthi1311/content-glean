@@ -1,4 +1,3 @@
-
 // API Keys
 const PEXELS_API_KEY = "L59jMEI6YO3wJeUAz5jFiSQmisBvFpDwinTYxQhutUS9ZlEE07UrfGPL";
 const NEWSAPI_KEY = "8fa56cadeb584084aed2653f93a8233d";
@@ -68,11 +67,11 @@ const MOCK_TRENDING_TOPICS: TrendingTopic[] = [
   },
 ];
 
-// Mock stock media for when API fails
+// Enhanced mock stock media with more reliable video URLs
 const MOCK_STOCK_MEDIA: StockMedia[] = [
   {
     id: 'video-1',
-    url: 'https://player.vimeo.com/external/538503359.sd.mp4?s=0c186c2e6611f56cbc4858de4071fe7cfa1b6df5&profile_id=165&oauth2_token_id=57447761',
+    url: 'https://player.vimeo.com/progressive_redirect/playback/538503359/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=67bfec865c2a3e13e25b8257af712561c4348a76b0d443cc32a13f1c3a139335',
     thumbnailUrl: 'https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     title: 'Tech Workspace',
     duration: 15,
@@ -81,7 +80,7 @@ const MOCK_STOCK_MEDIA: StockMedia[] = [
   },
   {
     id: 'video-2',
-    url: 'https://player.vimeo.com/external/449557371.sd.mp4?s=83c63e7eb0da811dd1db3aebdae999cba5f1ae7c&profile_id=165&oauth2_token_id=57447761',
+    url: 'https://player.vimeo.com/progressive_redirect/playback/449557371/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=d4c8a323cfd1cd63c75594e17f9e4e1f0e5b5f897b53b8ec8e7c6ce0fce1d9a2',
     thumbnailUrl: 'https://images.pexels.com/photos/1037992/pexels-photo-1037992.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     title: 'City Lights',
     duration: 20,
@@ -90,7 +89,7 @@ const MOCK_STOCK_MEDIA: StockMedia[] = [
   },
   {
     id: 'video-3',
-    url: 'https://player.vimeo.com/external/577442929.hd.mp4?s=95231c8a7fe2066ffb640204591b01a6c326b97c&profile_id=174&oauth2_token_id=57447761',
+    url: 'https://player.vimeo.com/progressive_redirect/playback/577442929/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=07427f44e7dc33494e7e0b525c3b89e45923a6801cef31ba1285bf73ce881c5c',
     thumbnailUrl: 'https://images.pexels.com/photos/1173777/pexels-photo-1173777.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     title: 'Nature Scene',
     duration: 18,
@@ -99,10 +98,19 @@ const MOCK_STOCK_MEDIA: StockMedia[] = [
   },
   {
     id: 'video-4',
-    url: 'https://player.vimeo.com/external/451265280.sd.mp4?s=77fa4c3e1d07ab398e4eb38c96ee45b7c5935a9c&profile_id=139&oauth2_token_id=57447761',
+    url: 'https://player.vimeo.com/progressive_redirect/playback/451265280/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=0c8d86cbfc06a1f2e875ef0e36253bd57a0ce2c42f13a5042edbea9ae0c9ac02',
     thumbnailUrl: 'https://images.pexels.com/photos/1172253/pexels-photo-1172253.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
     title: 'Business Meeting',
     duration: 25,
+    type: 'video',
+    source: 'Pexels',
+  },
+  {
+    id: 'video-5',
+    url: 'https://player.vimeo.com/progressive_redirect/playback/511626317/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=f4f5d87f5d25acfa733292c5b8c55f49f49e4e0127f6a71050c092c03959eec1',
+    thumbnailUrl: 'https://images.pexels.com/photos/4144144/pexels-photo-4144144.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+    title: 'Digital Technology',
+    duration: 22,
     type: 'video',
     source: 'Pexels',
   },
@@ -289,8 +297,8 @@ export async function searchStockMedia(query: string): Promise<StockMedia[]> {
     
     return data.videos.map((video: any) => {
       const videoFiles = video.video_files;
-      // Get HD or SD video file
-      const videoFile = videoFiles.find((file: any) => file.quality === 'hd' || file.quality === 'sd');
+      // Get HD or SD video file with direct MP4 URL
+      const videoFile = videoFiles.find((file: any) => (file.quality === 'hd' || file.quality === 'sd') && file.file_type === 'video/mp4');
       
       return {
         id: `video-${video.id}`,
@@ -301,7 +309,7 @@ export async function searchStockMedia(query: string): Promise<StockMedia[]> {
         type: 'video',
         source: 'Pexels',
       };
-    });
+    }).filter((video: StockMedia) => video.url !== ''); // Filter out videos with no URL
   } catch (error) {
     console.error('Error searching stock media:', error);
     return MOCK_STOCK_MEDIA;
@@ -364,18 +372,28 @@ export async function searchMusicTracks(query: string = 'NCS music'): Promise<Mu
   }
 }
 
-// Mock function for video assembly with improved, realistic output
+// Mock function for video assembly with improved, reliable output
 export async function assembleVideo(projectData: any): Promise<string> {
   console.log('Assembling video with project data:', projectData);
   
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 3000));
   
-  // Return a working video URL for preview
-  return 'https://player.vimeo.com/external/577442929.hd.mp4?s=95231c8a7fe2066ffb640204591b01a6c326b97c&profile_id=174&oauth2_token_id=57447761';
+  // Determine which video to return based on resolution
+  let videoUrl = '';
+  
+  if (projectData.videoResolution === 'short') {
+    // Return a vertical video for shorts
+    videoUrl = 'https://player.vimeo.com/progressive_redirect/playback/769519058/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=71fb5be0fb62ee9a59a7504945ef1fba26c7a38c51ff3e4e0e8db45f5b18cdd1'; // Vertical format video
+  } else {
+    // Return a horizontal video for regular
+    videoUrl = 'https://player.vimeo.com/progressive_redirect/playback/577442929/rendition/720p/file.mp4?loc=external&oauth2_token_id=57447761&signature=07427f44e7dc33494e7e0b525c3b89e45923a6801cef31ba1285bf73ce881c5c'; // Horizontal format video
+  }
+  
+  return videoUrl;
 }
 
-// Mock function for Google Drive upload
+// Mock function for Google Drive upload with working download URL
 export async function uploadToGoogleDrive(videoUrl: string, title: string): Promise<{ fileId: string, downloadUrl: string }> {
   console.log('Uploading to Google Drive:', { videoUrl, title });
   
@@ -385,6 +403,6 @@ export async function uploadToGoogleDrive(videoUrl: string, title: string): Prom
   // Return the same video URL for download to ensure it works
   return {
     fileId: `file-${Date.now()}`,
-    downloadUrl: videoUrl,
+    downloadUrl: videoUrl, // This ensures the download URL is the same as the video URL
   };
 }
