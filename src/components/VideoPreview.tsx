@@ -56,7 +56,10 @@ const VideoPreview: React.FC = () => {
               controls
               poster={currentProject.selectedMedia[0]?.thumbnailUrl}
               className="w-full h-full"
-            />
+              playsInline
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
           
           <div className="flex flex-wrap justify-center gap-3">
@@ -97,7 +100,7 @@ const VideoPreview: React.FC = () => {
               <h3 className="text-lg font-medium">Video Summary</h3>
               
               <div className="space-y-2">
-                <p><span className="font-medium">Topic:</span> {currentProject.topic?.title}</p>
+                <p><span className="font-medium">Topic:</span> {currentProject.topic?.title || 'No topic selected'}</p>
                 <p><span className="font-medium">Selected Video Clips:</span> {currentProject.selectedMedia.length}</p>
                 <p><span className="font-medium">Sound Effects:</span> {currentProject.selectedSoundEffects.length}</p>
                 <p><span className="font-medium">Music Track:</span> {currentProject.selectedMusic?.title || 'None'}</p>
